@@ -4,7 +4,13 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
-#include <linux/fs.h>
+
+#if defined(__linux__)
+  #include <linux/fs.h>
+#elif defined(__FreeBSD__)
+  #include <sys/disk.h>
+#endif
+
 #include "fs/file_model.h"
 
 void fs::file_model::close()
@@ -77,9 +83,17 @@ bool fs::file_model::open(const char* filename, open_mode mode)
     _M_block_device = true;
 
     // Get size.
+#if defined(__linux__)
     if (ioctl(_M_fd, BLKGETSIZE64, &_M_filesize) < 0) {
       return false;
     }
+#elif defined(__FreeBSD__)
+    if (ioctl(_M_fd, DIOCGMEDIASIZE, &_M_filesize) < 0) {
+      return false;
+    }
+#else
+    return false;
+#endif
   } else {
     return false;
   }
